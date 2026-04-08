@@ -3,12 +3,12 @@ import { StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
-export default function WorkoutsScreen() {
+export default function SettingsScreen() {
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Тренировки</ThemedText>
-        <ThemedText>Здесь будет список сохраненных интервальных тренировок.</ThemedText>
+        <ThemedText type="title">Настройки</ThemedText>
+        <ThemedText>Здесь появится минимальная настройка звука таймера.</ThemedText>
       </ThemedView>
     </ThemedView>
   );
