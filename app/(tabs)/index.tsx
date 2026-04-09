@@ -5,6 +5,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { listWorkouts } from '@/lib/db';
 import { formatDuration } from '@/lib/format-duration';
 import { getTotalDurationSec, buildTimeline } from '@/features/workouts/model';
@@ -88,12 +89,23 @@ function WorkoutListItem({ workout }: { workout: Workout }) {
   const totalDurationSec = getTotalDurationSec(timeline);
 
   return (
-    <Pressable style={styles.card} onPress={() => router.push(`/workouts/${workout.id}/edit`)}>
-      <ThemedText type="subtitle">{workout.name}</ThemedText>
-      <ThemedText>
-        {workout.sets} сетов • {timeline.length} этапов • {formatDuration(totalDurationSec)}
-      </ThemedText>
-    </Pressable>
+    <ThemedView style={styles.card}>
+      <Pressable
+        style={styles.cardMainAction}
+        onPress={() => router.push(`/workouts/${workout.id}/timer`)}>
+        <ThemedText type="subtitle">{workout.name}</ThemedText>
+        <ThemedText>
+          {workout.sets} сетов • {timeline.length} этапов • {formatDuration(totalDurationSec)}
+        </ThemedText>
+        <ThemedText style={styles.runHint}>Нажмите, чтобы запустить</ThemedText>
+      </Pressable>
+
+      <Pressable
+        style={styles.editButton}
+        onPress={() => router.push(`/workouts/${workout.id}/edit`)}>
+        <IconSymbol name="square.and.pencil" size={20} color="#0a7ea4" />
+      </Pressable>
+    </ThemedView>
   );
 }
 
@@ -129,10 +141,28 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   card: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
     borderRadius: 8,
-    gap: 6,
+    gap: 12,
     backgroundColor: 'rgba(127, 127, 127, 0.12)',
+  },
+  cardMainAction: {
+    flex: 1,
+    gap: 6,
+  },
+  runHint: {
+    color: '#0a7ea4',
+    fontWeight: '600',
+  },
+  editButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
   },
   primaryButton: {
     alignSelf: 'flex-start',

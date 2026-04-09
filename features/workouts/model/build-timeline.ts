@@ -47,3 +47,73 @@ export function buildTimeline(workout: Workout): TimelineItem[] {
 export function getTotalDurationSec(timeline: TimelineItem[]): number {
   return timeline.reduce((total, item) => total + item.durationSec, 0);
 }
+
+export function getTimelineSnapshot(timeline: TimelineItem[], elapsedMs: number) {
+  const totalDurationMs = getTotalDurationSec(timeline) * 1000;
+  const boundedElapsedMs = Math.max(0, Math.min(elapsedMs, totalDurationMs));
+
+  if (timeline.length === 0) {
+    return {
+      currentItem: null,
+      currentItemIndex: -1,
+      currentItemElapsedMs: 0,
+      currentItemRemainingMs: 0,
+      totalDurationMs: 0,
+      elapsedMs: 0,
+      progress: 0,
+      isFinished: true,
+    };
+  }
+
+  if (boundedElapsedMs >= totalDurationMs) {
+    const lastItem = timeline[timeline.length - 1];
+
+    return {
+      currentItem: lastItem,
+      currentItemIndex: timeline.length - 1,
+      currentItemElapsedMs: lastItem.durationSec * 1000,
+      currentItemRemainingMs: 0,
+      totalDurationMs,
+      elapsedMs: totalDurationMs,
+      progress: 1,
+      isFinished: true,
+    };
+  }
+
+  let accumulatedMs = 0;
+
+  for (const [index, item] of timeline.entries()) {
+    const itemDurationMs = item.durationSec * 1000;
+    const nextAccumulatedMs = accumulatedMs + itemDurationMs;
+
+    if (boundedElapsedMs < nextAccumulatedMs) {
+      const currentItemElapsedMs = boundedElapsedMs - accumulatedMs;
+
+      return {
+        currentItem: item,
+        currentItemIndex: index,
+        currentItemElapsedMs,
+        currentItemRemainingMs: itemDurationMs - currentItemElapsedMs,
+        totalDurationMs,
+        elapsedMs: boundedElapsedMs,
+        progress: totalDurationMs === 0 ? 0 : boundedElapsedMs / totalDurationMs,
+        isFinished: false,
+      };
+    }
+
+    accumulatedMs = nextAccumulatedMs;
+  }
+
+  const lastItem = timeline[timeline.length - 1];
+
+  return {
+    currentItem: lastItem,
+    currentItemIndex: timeline.length - 1,
+    currentItemElapsedMs: lastItem.durationSec * 1000,
+    currentItemRemainingMs: 0,
+    totalDurationMs,
+    elapsedMs: totalDurationMs,
+    progress: 1,
+    isFinished: true,
+  };
+}

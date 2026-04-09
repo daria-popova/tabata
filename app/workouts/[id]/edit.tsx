@@ -1,7 +1,7 @@
+import { Pressable, Alert, StyleSheet } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -115,7 +115,17 @@ export default function EditWorkoutScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Редактировать тренировку' }} />
+      <Stack.Screen
+        options={{
+          title: 'Редактировать тренировку',
+          headerRight: () =>
+            workout ? (
+              <Pressable onPress={() => router.push(`/workouts/${workout.id}/timer`)}>
+                <ThemedText type="defaultSemiBold">Запустить</ThemedText>
+              </Pressable>
+            ) : null,
+        }}
+      />
 
       {isLoading ? (
         <ThemedView style={styles.centerState}>
@@ -142,7 +152,7 @@ export default function EditWorkoutScreen() {
   );
 }
 
-const styles = {
+const styles = StyleSheet.create({
   centerState: {
     flex: 1,
     alignItems: 'center',
@@ -150,4 +160,4 @@ const styles = {
     gap: 12,
     padding: 24,
   },
-} as const;
+});
