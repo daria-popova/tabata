@@ -1,7 +1,7 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet } from 'react-native';
+import { Alert, Pressable, Share, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -12,9 +12,11 @@ import {
 } from '@/features/workouts/model';
 import { useTimerSounds } from '@/features/workouts/use-timer-sounds';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { formatClock, formatDuration } from '@/lib/format-duration';
 import { getWorkoutById } from '@/lib/db';
+import { formatClock, formatDuration } from '@/lib/format-duration';
+import { formatRuCount } from '@/lib/russian-plural';
 import { getSoundEnabled } from '@/lib/settings/sound-settings';
+import type { TimelineItem, Workout } from '@/types';
 
 const TICK_MS = 250;
 
@@ -24,6 +26,9 @@ const PHASE_LABELS = {
   rest: 'Отдых',
   cooldown: 'Заминка',
 } as const;
+
+const SET_FORMS = ['сет', 'сета', 'сетов'] as const;
+const STEP_FORMS = ['этап', 'этапа', 'этапов'] as const;
 
 type TimerStatus = 'idle' | 'running' | 'paused' | 'finished';
 
@@ -95,6 +100,9 @@ export default function WorkoutTimerScreen() {
   const totalDurationSec = getTotalDurationSec(timeline);
   const snapshot = useMemo(() => getTimelineSnapshot(timeline, elapsedMs), [timeline, elapsedMs]);
   const isFinished = status === 'finished' || snapshot.isFinished;
+  const currentSetLabel = workout
+    ? getCurrentSetLabel(workout, snapshot.currentItem, isFinished)
+    : null;
   const timerCardTheme =
     !isFinished && snapshot.currentItem?.type === 'work'
       ? TIMER_CARD_THEME.work
@@ -176,6 +184,21 @@ export default function WorkoutTimerScreen() {
     setStatus('idle');
   }
 
+  async function handleShare() {
+    if (!workout) {
+      return;
+    }
+
+    try {
+      await Share.share({
+        message: buildShareMessage(workout, totalDurationSec),
+      });
+    } catch (error) {
+      console.error('Failed to share workout result', error);
+      Alert.alert('Ошибка', 'Не удалось открыть меню отправки.');
+    }
+  }
+
   return (
     <>
       <Stack.Screen options={{ title: 'Таймер' }} />
@@ -194,7 +217,8 @@ export default function WorkoutTimerScreen() {
           <ThemedView style={styles.header}>
             <ThemedText type="title">{workout.name}</ThemedText>
             <ThemedText>
-              {workout.sets} сетов • {timeline.length} этапов • {formatDuration(totalDurationSec)}
+              {formatRuCount(workout.sets, SET_FORMS)} • {formatRuCount(timeline.length, STEP_FORMS)}{' '}
+              • {formatDuration(totalDurationSec)}
             </ThemedText>
           </ThemedView>
 
@@ -216,10 +240,15 @@ export default function WorkoutTimerScreen() {
             <ThemedText style={[styles.timerValue, { color: timerCardTheme.textColor }]}>
               {isFinished ? '00:00' : formatClock(Math.ceil(snapshot.currentItemRemainingMs / 1000))}
             </ThemedText>
+            {currentSetLabel ? (
+              <ThemedText style={[styles.currentSet, { color: timerCardTheme.textColor }]}>
+                {currentSetLabel}
+              </ThemedText>
+            ) : null}
             <ThemedText style={{ color: timerCardTheme.secondaryTextColor }}>
               {isFinished
                 ? 'Тренировка завершена'
-                : `Этап ${snapshot.currentItemIndex + 1} из ${timeline.length}`}
+                : `Этап ${snapshot.currentItemIndex + 1} из ${formatRuCount(timeline.length, STEP_FORMS)}`}
             </ThemedText>
           </ThemedView>
 
@@ -257,13 +286,41 @@ export default function WorkoutTimerScreen() {
             <Pressable
               style={[styles.secondaryButton, { borderColor, backgroundColor: surfaceColor }]}
               onPress={handleStop}>
-              <ThemedText>Стоп</ThemedText>
+              <ThemedText style={styles.secondaryButtonText}>Стоп</ThemedText>
             </Pressable>
           </ThemedView>
+
+          {isFinished ? (
+            <Pressable style={styles.shareButton} onPress={() => void handleShare()}>
+              <ThemedText style={styles.shareButtonText}>Поделиться</ThemedText>
+            </Pressable>
+          ) : null}
         </ThemedView>
       )}
     </>
   );
+}
+
+function getCurrentSetLabel(
+  workout: Workout,
+  currentItem: TimelineItem | null,
+  isFinished: boolean
+): string {
+  if (isFinished) {
+    return `${formatRuCount(workout.sets, SET_FORMS)} завершено`;
+  }
+
+  const currentSetNumber =
+    currentItem?.setNumber ?? (currentItem?.type === 'cooldown' ? workout.sets : 1);
+
+  return `Сет ${currentSetNumber} из ${workout.sets}`;
+}
+
+function buildShareMessage(workout: Workout, totalDurationSec: number): string {
+  return `#спорт Тренировка ${workout.name} за ${formatDuration(totalDurationSec)}, ${formatRuCount(
+    workout.sets,
+    SET_FORMS
+  )} (работа ${formatDuration(workout.workSec)}, отдых ${formatDuration(workout.restSec)}).`;
 }
 
 const styles = StyleSheet.create({
@@ -294,6 +351,11 @@ const styles = StyleSheet.create({
     lineHeight: 56,
     fontWeight: '700',
   },
+  currentSet: {
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: '700',
+  },
   progressSection: {
     gap: 10,
   },
@@ -313,22 +375,43 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    minHeight: 64,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
     borderRadius: 8,
     backgroundColor: '#0a7ea4',
   },
   primaryButtonText: {
     color: '#ffffff',
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
   },
   secondaryButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    minHeight: 64,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
     borderRadius: 8,
     borderWidth: 1,
+  },
+  secondaryButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  shareButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 56,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 8,
+    backgroundColor: '#11181c',
+  },
+  shareButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700',
   },
 });

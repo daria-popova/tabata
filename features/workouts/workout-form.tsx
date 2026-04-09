@@ -11,7 +11,10 @@ import {
   parsePositiveInteger,
   sanitizeNumericText,
 } from '@/lib/number-input';
+import { formatRuCount } from '@/lib/russian-plural';
 import type { Workout } from '@/types';
+
+const STEP_FORMS = ['этап', 'этапа', 'этапов'] as const;
 
 export type WorkoutFormState = {
   name: string;
@@ -205,7 +208,7 @@ export function WorkoutForm({
           <ThemedText>
             Структура: Разминка - Работа / Отдых x {previewWorkout?.sets ?? '—'} - Заминка
           </ThemedText>
-          <ThemedText>Этапов всего: {previewTimeline.length}</ThemedText>
+          <ThemedText>Всего: {formatRuCount(previewTimeline.length, STEP_FORMS)}</ThemedText>
           <ThemedText>
             Общая длительность: {previewWorkout ? formatDuration(totalDurationSec) : 'заполните форму'}
           </ThemedText>

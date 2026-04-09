@@ -10,7 +10,11 @@ import { buildTimeline, getTotalDurationSec } from '@/features/workouts/model';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { listWorkouts } from '@/lib/db';
 import { formatDuration } from '@/lib/format-duration';
+import { formatRuCount } from '@/lib/russian-plural';
 import type { Workout } from '@/types';
+
+const SET_FORMS = ['сет', 'сета', 'сетов'] as const;
+const STEP_FORMS = ['этап', 'этапа', 'этапов'] as const;
 
 export default function WorkoutsScreen() {
   const db = useSQLiteContext();
@@ -99,7 +103,8 @@ function WorkoutListItem({ workout }: { workout: Workout }) {
         onPress={() => router.push(`/workouts/${workout.id}/timer`)}>
         <ThemedText type="subtitle">{workout.name}</ThemedText>
         <ThemedText>
-          {workout.sets} сетов • {timeline.length} этапов • {formatDuration(totalDurationSec)}
+          {formatRuCount(workout.sets, SET_FORMS)} • {formatRuCount(timeline.length, STEP_FORMS)}{' '}
+          • {formatDuration(totalDurationSec)}
         </ThemedText>
         <ThemedText style={styles.runHint}>Запустить</ThemedText>
       </Pressable>

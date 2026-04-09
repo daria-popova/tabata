@@ -18,4 +18,5 @@ export interface TimelineItem {
   type: PhaseType;
   durationSec: number;
   order: number;
+  setNumber?: number;
 }

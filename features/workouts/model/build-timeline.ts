@@ -20,6 +20,7 @@ export function buildTimeline(workout: Workout): TimelineItem[] {
       type: 'work',
       durationSec: workout.workSec,
       order,
+      setNumber: setIndex + 1,
     });
     order += 1;
 
@@ -28,6 +29,7 @@ export function buildTimeline(workout: Workout): TimelineItem[] {
       type: 'rest',
       durationSec: workout.restSec,
       order,
+      setNumber: setIndex + 1,
     });
     order += 1;
   }
