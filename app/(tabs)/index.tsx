@@ -6,6 +6,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { listWorkouts } from '@/lib/db';
+import { formatDuration } from '@/lib/format-duration';
 import { getTotalDurationSec, buildTimeline } from '@/features/workouts/model';
 import type { Workout } from '@/types';
 
@@ -82,31 +83,17 @@ export default function WorkoutsScreen() {
 }
 
 function WorkoutListItem({ workout }: { workout: Workout }) {
-  const totalDurationSec = getTotalDurationSec(buildTimeline(workout));
+  const timeline = buildTimeline(workout);
+  const totalDurationSec = getTotalDurationSec(timeline);
 
   return (
     <ThemedView style={styles.card}>
       <ThemedText type="subtitle">{workout.name}</ThemedText>
       <ThemedText>
-        {workout.phases.length} этапов • {formatDuration(totalDurationSec)}
+        {workout.sets} сетов • {timeline.length} этапов • {formatDuration(totalDurationSec)}
       </ThemedText>
     </ThemedView>
   );
-}
-
-function formatDuration(totalDurationSec: number) {
-  const minutes = Math.floor(totalDurationSec / 60);
-  const seconds = totalDurationSec % 60;
-
-  if (minutes === 0) {
-    return `${seconds} сек`;
-  }
-
-  if (seconds === 0) {
-    return `${minutes} мин`;
-  }
-
-  return `${minutes} мин ${seconds} сек`;
 }
 
 const styles = StyleSheet.create({

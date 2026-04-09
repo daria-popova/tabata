@@ -1,43 +1,36 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { Phase, PhaseType, Workout } from '@/types';
+import type { Workout } from '@/types';
 
 interface WorkoutRow {
   id: string;
   name: string;
   created_at: number;
-}
-
-interface PhaseRow {
-  id: string;
-  workout_id: string;
-  type: PhaseType;
-  duration_sec: number;
-  position: number;
+  warmup_sec: number;
+  work_sec: number;
+  rest_sec: number;
+  sets: number;
+  cooldown_sec: number;
 }
 
 export async function listWorkouts(db: SQLiteDatabase): Promise<Workout[]> {
   const workoutRows = await db.getAllAsync<WorkoutRow>(
-    'SELECT id, name, created_at FROM workouts ORDER BY created_at DESC'
-  );
-
-  if (workoutRows.length === 0) {
-    return [];
-  }
-
-  const phaseRows = await db.getAllAsync<PhaseRow>(
     `
-      SELECT id, workout_id, type, duration_sec, position
-      FROM phases
-      WHERE workout_id IN (${workoutRows.map(() => '?').join(', ')})
-      ORDER BY workout_id, position ASC
-    `,
-    workoutRows.map((row) => row.id)
+      SELECT
+        id,
+        name,
+        created_at,
+        warmup_sec,
+        work_sec,
+        rest_sec,
+        sets,
+        cooldown_sec
+      FROM workouts
+      ORDER BY created_at DESC
+    `
   );
 
-  const phasesByWorkoutId = groupPhasesByWorkoutId(phaseRows);
-
-  return workoutRows.map((row) => mapWorkoutRow(row, phasesByWorkoutId.get(row.id) ?? []));
+  return workoutRows.map(mapWorkoutRow);
 }
 
 export async function getWorkoutById(
@@ -45,88 +38,71 @@ export async function getWorkoutById(
   workoutId: string
 ): Promise<Workout | null> {
   const workoutRow = await db.getFirstAsync<WorkoutRow>(
-    'SELECT id, name, created_at FROM workouts WHERE id = ?',
-    workoutId
-  );
-
-  if (!workoutRow) {
-    return null;
-  }
-
-  const phaseRows = await db.getAllAsync<PhaseRow>(
     `
-      SELECT id, workout_id, type, duration_sec, position
-      FROM phases
-      WHERE workout_id = ?
-      ORDER BY position ASC
+      SELECT
+        id,
+        name,
+        created_at,
+        warmup_sec,
+        work_sec,
+        rest_sec,
+        sets,
+        cooldown_sec
+      FROM workouts
+      WHERE id = ?
     `,
     workoutId
   );
 
-  return mapWorkoutRow(workoutRow, phaseRows);
+  return workoutRow ? mapWorkoutRow(workoutRow) : null;
 }
 
 export async function saveWorkout(db: SQLiteDatabase, workout: Workout): Promise<void> {
-  await db.withExclusiveTransactionAsync(async (tx) => {
-    await tx.runAsync(
-      `
-        INSERT INTO workouts (id, name, created_at)
-        VALUES (?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-          name = excluded.name
-      `,
-      workout.id,
-      workout.name,
-      workout.createdAt
-    );
-
-    await tx.runAsync('DELETE FROM phases WHERE workout_id = ?', workout.id);
-
-    for (const [index, phase] of workout.phases.entries()) {
-      await tx.runAsync(
-        `
-          INSERT INTO phases (id, workout_id, type, duration_sec, position)
-          VALUES (?, ?, ?, ?, ?)
-        `,
-        phase.id,
-        workout.id,
-        phase.type,
-        phase.durationSec,
-        index
-      );
-    }
-  });
+  await db.runAsync(
+    `
+      INSERT INTO workouts (
+        id,
+        name,
+        created_at,
+        warmup_sec,
+        work_sec,
+        rest_sec,
+        sets,
+        cooldown_sec
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        warmup_sec = excluded.warmup_sec,
+        work_sec = excluded.work_sec,
+        rest_sec = excluded.rest_sec,
+        sets = excluded.sets,
+        cooldown_sec = excluded.cooldown_sec
+    `,
+    workout.id,
+    workout.name,
+    workout.createdAt,
+    workout.warmupSec,
+    workout.workSec,
+    workout.restSec,
+    workout.sets,
+    workout.cooldownSec
+  );
 }
 
 export async function deleteWorkout(db: SQLiteDatabase, workoutId: string): Promise<void> {
   await db.runAsync('DELETE FROM workouts WHERE id = ?', workoutId);
 }
 
-function mapWorkoutRow(row: WorkoutRow, phaseRows: PhaseRow[]): Workout {
+function mapWorkoutRow(row: WorkoutRow): Workout {
   return {
     id: row.id,
     name: row.name,
     createdAt: row.created_at,
-    phases: phaseRows.map(mapPhaseRow),
+    warmupSec: row.warmup_sec,
+    workSec: row.work_sec,
+    restSec: row.rest_sec,
+    sets: row.sets,
+    cooldownSec: row.cooldown_sec,
   };
-}
-
-function mapPhaseRow(row: PhaseRow): Phase {
-  return {
-    id: row.id,
-    type: row.type,
-    durationSec: row.duration_sec,
-  };
-}
-
-function groupPhasesByWorkoutId(phaseRows: PhaseRow[]) {
-  const phasesByWorkoutId = new Map<string, PhaseRow[]>();
-
-  for (const row of phaseRows) {
-    const workoutPhases = phasesByWorkoutId.get(row.workout_id) ?? [];
-    workoutPhases.push(row);
-    phasesByWorkoutId.set(row.workout_id, workoutPhases);
-  }
-
-  return phasesByWorkoutId;
 }
