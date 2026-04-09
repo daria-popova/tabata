@@ -83,16 +83,17 @@ export default function WorkoutsScreen() {
 }
 
 function WorkoutListItem({ workout }: { workout: Workout }) {
+  const router = useRouter();
   const timeline = buildTimeline(workout);
   const totalDurationSec = getTotalDurationSec(timeline);
 
   return (
-    <ThemedView style={styles.card}>
+    <Pressable style={styles.card} onPress={() => router.push(`/workouts/${workout.id}/edit`)}>
       <ThemedText type="subtitle">{workout.name}</ThemedText>
       <ThemedText>
         {workout.sets} сетов • {timeline.length} этапов • {formatDuration(totalDurationSec)}
       </ThemedText>
-    </ThemedView>
+    </Pressable>
   );
 }
 
