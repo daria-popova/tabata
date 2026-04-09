@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { buildTimeline, getTotalDurationSec } from '@/features/workouts/model';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { listWorkouts } from '@/lib/db';
 import { formatDuration } from '@/lib/format-duration';
 import type { Workout } from '@/types';
@@ -14,6 +15,7 @@ import type { Workout } from '@/types';
 export default function WorkoutsScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
+  const surfaceMutedColor = useThemeColor({}, 'surfaceMuted');
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -65,7 +67,7 @@ export default function WorkoutsScreen() {
           </Pressable>
         </ThemedView>
       ) : workouts.length === 0 ? (
-        <ThemedView style={styles.emptyState}>
+        <ThemedView style={[styles.emptyState, { backgroundColor: surfaceMutedColor }]}>
           <ThemedText type="subtitle">Пока пусто</ThemedText>
           <ThemedText>
             Создайте первую тренировку. Она сохранится локально и появится в этом списке.
@@ -85,11 +87,13 @@ export default function WorkoutsScreen() {
 
 function WorkoutListItem({ workout }: { workout: Workout }) {
   const router = useRouter();
+  const surfaceMutedColor = useThemeColor({}, 'surfaceMuted');
+  const surfaceColor = useThemeColor({}, 'surface');
   const timeline = buildTimeline(workout);
   const totalDurationSec = getTotalDurationSec(timeline);
 
   return (
-    <ThemedView style={styles.card}>
+    <ThemedView style={[styles.card, { backgroundColor: surfaceMutedColor }]}>
       <Pressable
         style={styles.cardMainAction}
         onPress={() => router.push(`/workouts/${workout.id}/timer`)}>
@@ -101,7 +105,7 @@ function WorkoutListItem({ workout }: { workout: Workout }) {
       </Pressable>
 
       <Pressable
-        style={styles.editButton}
+        style={[styles.editButton, { backgroundColor: surfaceColor }]}
         onPress={() => router.push(`/workouts/${workout.id}/edit`)}>
         <IconSymbol name="square.and.pencil" size={20} color="#0a7ea4" />
       </Pressable>
@@ -134,7 +138,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     gap: 8,
-    backgroundColor: 'rgba(127, 127, 127, 0.12)',
   },
   listContent: {
     gap: 12,
@@ -146,7 +149,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     gap: 12,
-    backgroundColor: 'rgba(127, 127, 127, 0.12)',
   },
   cardMainAction: {
     flex: 1,
@@ -162,7 +164,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#ffffff',
   },
   primaryButton: {
     alignSelf: 'flex-start',
@@ -179,6 +180,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: 'rgba(127, 127, 127, 0.12)',
   },
 });

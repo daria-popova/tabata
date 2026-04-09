@@ -4,6 +4,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-nativ
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { buildTimeline, getTotalDurationSec } from '@/features/workouts/model';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDuration } from '@/lib/format-duration';
 import {
   parseNonNegativeInteger,
@@ -52,6 +53,11 @@ export function WorkoutForm({
   isDeleting = false,
 }: WorkoutFormProps) {
   const [form, setForm] = useState(initialValue);
+  const backgroundColor = useThemeColor({}, 'background');
+  const surfaceColor = useThemeColor({}, 'surface');
+  const borderColor = useThemeColor({}, 'border');
+  const textColor = useThemeColor({}, 'text');
+  const mutedTextColor = useThemeColor({}, 'mutedText');
 
   const previewWorkout = useMemo<Workout | null>(() => {
     const normalizedName = form.name.trim();
@@ -130,7 +136,7 @@ export function WorkoutForm({
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScrollView style={{ backgroundColor }} contentContainerStyle={styles.scrollContent}>
       <ThemedView style={styles.container}>
         <ThemedView style={styles.section}>
           <ThemedText type="title">{title}</ThemedText>
@@ -143,7 +149,8 @@ export function WorkoutForm({
             value={form.name}
             onChangeText={(value) => updateField('name', value)}
             placeholder="Например, Табата 8 сетов"
-            style={styles.input}
+            placeholderTextColor={mutedTextColor}
+            style={[styles.input, { borderColor, backgroundColor: surfaceColor, color: textColor }]}
           />
         </ThemedView>
 
@@ -159,7 +166,7 @@ export function WorkoutForm({
 
         <ThemedView style={styles.section}>
           <ThemedText type="subtitle">Основной цикл</ThemedText>
-          <ThemedView style={styles.card}>
+          <ThemedView style={[styles.card, { borderColor, backgroundColor: surfaceColor }]}>
             <DurationField
               label="Работа, сек"
               value={form.workSecText}
@@ -193,7 +200,7 @@ export function WorkoutForm({
           />
         </ThemedView>
 
-        <ThemedView style={styles.summary}>
+        <ThemedView style={[styles.summary, { borderColor, backgroundColor: surfaceColor }]}>
           <ThemedText type="subtitle">Сводка</ThemedText>
           <ThemedText>
             Структура: Разминка - Работа / Отдых x {previewWorkout?.sets ?? '—'} - Заминка
@@ -215,7 +222,11 @@ export function WorkoutForm({
 
         {onDelete ? (
           <Pressable
-            style={[styles.deleteButton, isDeleting ? styles.primaryButtonDisabled : undefined]}
+            style={[
+              styles.deleteButton,
+              { backgroundColor: surfaceColor },
+              isDeleting ? styles.primaryButtonDisabled : undefined,
+            ]}
             onPress={() => void onDelete()}
             disabled={isSubmitting || isDeleting}>
             <ThemedText style={styles.deleteButtonText}>
@@ -239,6 +250,11 @@ function DurationField({
   onChangeText: (value: string) => void;
   placeholder: string;
 }) {
+  const surfaceColor = useThemeColor({}, 'surface');
+  const borderColor = useThemeColor({}, 'border');
+  const textColor = useThemeColor({}, 'text');
+  const mutedTextColor = useThemeColor({}, 'mutedText');
+
   return (
     <ThemedView style={styles.field}>
       <ThemedText>{label}</ThemedText>
@@ -247,7 +263,8 @@ function DurationField({
         onChangeText={onChangeText}
         keyboardType="number-pad"
         placeholder={placeholder}
-        style={styles.input}
+        placeholderTextColor={mutedTextColor}
+        style={[styles.input, { borderColor, backgroundColor: surfaceColor, color: textColor }]}
       />
     </ThemedView>
   );
@@ -257,7 +274,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 24,
     paddingBottom: 40,
-    backgroundColor: '#ffffff',
   },
   container: {
     gap: 24,
@@ -270,28 +286,22 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(127, 127, 127, 0.3)',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: '#ffffff',
   },
   card: {
     padding: 16,
     borderRadius: 8,
     gap: 16,
     borderWidth: 1,
-    borderColor: 'rgba(127, 127, 127, 0.18)',
-    backgroundColor: '#ffffff',
   },
   summary: {
     padding: 16,
     borderRadius: 8,
     gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(127, 127, 127, 0.18)',
-    backgroundColor: '#ffffff',
   },
   primaryButton: {
     alignItems: 'center',
@@ -309,7 +319,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#d64545',
-    backgroundColor: '#ffffff',
   },
   primaryButtonDisabled: {
     opacity: 0.7,

@@ -10,8 +10,11 @@ import {
   getTimelineSnapshot,
   getTotalDurationSec,
 } from '@/features/workouts/model';
+import { useTimerSounds } from '@/features/workouts/use-timer-sounds';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDuration } from '@/lib/format-duration';
 import { getWorkoutById } from '@/lib/db';
+import { getSoundEnabled } from '@/lib/settings/sound-settings';
 
 const TICK_MS = 250;
 
@@ -25,13 +28,6 @@ const PHASE_LABELS = {
 type TimerStatus = 'idle' | 'running' | 'paused' | 'finished';
 
 const TIMER_CARD_THEME = {
-  default: {
-    backgroundColor: '#ffffff',
-    borderColor: 'rgba(127, 127, 127, 0.18)',
-    textColor: '#11181C',
-    secondaryTextColor: '#4b5563',
-    accentColor: '#0a7ea4',
-  },
   work: {
     backgroundColor: '#b42318',
     borderColor: '#b42318',
@@ -55,9 +51,29 @@ export default function WorkoutTimerScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [workout, setWorkout] = useState<Awaited<ReturnType<typeof getWorkoutById>>>(null);
   const [status, setStatus] = useState<TimerStatus>('idle');
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [elapsedBeforeRunMs, setElapsedBeforeRunMs] = useState(0);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [runStartedAtMs, setRunStartedAtMs] = useState<number | null>(null);
+  const backgroundColor = useThemeColor({}, 'background');
+  const surfaceColor = useThemeColor({}, 'surface');
+  const borderColor = useThemeColor({}, 'border');
+  const textColor = useThemeColor({}, 'text');
+  const mutedTextColor = useThemeColor({}, 'mutedText');
+  const trackColor = useThemeColor({}, 'surfaceMuted');
+
+  useEffect(() => {
+    async function loadSoundSetting() {
+      try {
+        const enabled = await getSoundEnabled();
+        setSoundEnabled(enabled);
+      } catch (error) {
+        console.error('Failed to load sound setting', error);
+      }
+    }
+
+    void loadSoundSetting();
+  }, []);
 
   useEffect(() => {
     async function loadWorkout() {
@@ -83,7 +99,20 @@ export default function WorkoutTimerScreen() {
       ? TIMER_CARD_THEME.work
       : snapshot.currentItem?.type === 'rest'
         ? TIMER_CARD_THEME.rest
-        : TIMER_CARD_THEME.default;
+        : {
+            backgroundColor: surfaceColor,
+            borderColor,
+            textColor,
+            secondaryTextColor: mutedTextColor,
+            accentColor: '#0a7ea4',
+          };
+
+  useTimerSounds({
+    currentItemId: snapshot.currentItem?.id ?? null,
+    currentItemType: snapshot.currentItem?.type ?? null,
+    status,
+    soundEnabled,
+  });
 
   useEffect(() => {
     if (status !== 'running' || runStartedAtMs === null) {
@@ -158,7 +187,7 @@ export default function WorkoutTimerScreen() {
           <ThemedText>Не удалось построить тренировку для запуска.</ThemedText>
         </ThemedView>
       ) : (
-        <ThemedView style={styles.container}>
+        <ThemedView style={[styles.container, { backgroundColor }]}>
           <ThemedView style={styles.header}>
             <ThemedText type="title">{workout.name}</ThemedText>
             <ThemedText>
@@ -187,7 +216,7 @@ export default function WorkoutTimerScreen() {
 
           <ThemedView style={styles.progressSection}>
             <ThemedText>Общий прогресс</ThemedText>
-            <ThemedView style={styles.progressTrack}>
+            <ThemedView style={[styles.progressTrack, { backgroundColor: trackColor }]}>
               <ThemedView
                 style={[
                   styles.progressFill,
@@ -216,7 +245,9 @@ export default function WorkoutTimerScreen() {
               </Pressable>
             )}
 
-            <Pressable style={styles.secondaryButton} onPress={handleStop}>
+            <Pressable
+              style={[styles.secondaryButton, { borderColor, backgroundColor: surfaceColor }]}
+              onPress={handleStop}>
               <ThemedText>Стоп</ThemedText>
             </Pressable>
           </ThemedView>
@@ -239,7 +270,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     gap: 24,
-    backgroundColor: '#ffffff',
   },
   centerState: {
     flex: 1,
@@ -255,8 +285,6 @@ const styles = StyleSheet.create({
     padding: 24,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(127, 127, 127, 0.18)',
-    backgroundColor: '#ffffff',
     alignItems: 'center',
     gap: 12,
   },
@@ -272,7 +300,6 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: 'rgba(127, 127, 127, 0.18)',
   },
   progressFill: {
     height: '100%',
@@ -302,7 +329,5 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(127, 127, 127, 0.18)',
-    backgroundColor: '#ffffff',
   },
 });
