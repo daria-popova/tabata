@@ -12,7 +12,7 @@ import {
 } from '@/features/workouts/model';
 import { useTimerSounds } from '@/features/workouts/use-timer-sounds';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { formatDuration } from '@/lib/format-duration';
+import { formatClock, formatDuration } from '@/lib/format-duration';
 import { getWorkoutById } from '@/lib/db';
 import { getSoundEnabled } from '@/lib/settings/sound-settings';
 
@@ -94,10 +94,11 @@ export default function WorkoutTimerScreen() {
   const timeline = useMemo(() => (workout ? buildTimeline(workout) : []), [workout]);
   const totalDurationSec = getTotalDurationSec(timeline);
   const snapshot = useMemo(() => getTimelineSnapshot(timeline, elapsedMs), [timeline, elapsedMs]);
+  const isFinished = status === 'finished' || snapshot.isFinished;
   const timerCardTheme =
-    snapshot.currentItem?.type === 'work'
+    !isFinished && snapshot.currentItem?.type === 'work'
       ? TIMER_CARD_THEME.work
-      : snapshot.currentItem?.type === 'rest'
+      : !isFinished && snapshot.currentItem?.type === 'rest'
         ? TIMER_CARD_THEME.rest
         : {
             backgroundColor: surfaceColor,
@@ -110,6 +111,8 @@ export default function WorkoutTimerScreen() {
   useTimerSounds({
     currentItemId: snapshot.currentItem?.id ?? null,
     currentItemType: snapshot.currentItem?.type ?? null,
+    currentItemRemainingMs: snapshot.currentItemRemainingMs,
+    currentItemDurationMs: snapshot.currentItem ? snapshot.currentItem.durationSec * 1000 : 0,
     status,
     soundEnabled,
   });
@@ -204,13 +207,19 @@ export default function WorkoutTimerScreen() {
               },
             ]}>
             <ThemedText type="subtitle" style={{ color: timerCardTheme.textColor }}>
-              {snapshot.currentItem ? PHASE_LABELS[snapshot.currentItem.type] : 'Завершено'}
+              {isFinished
+                ? 'Готово'
+                : snapshot.currentItem
+                  ? PHASE_LABELS[snapshot.currentItem.type]
+                  : 'Готово'}
             </ThemedText>
             <ThemedText style={[styles.timerValue, { color: timerCardTheme.textColor }]}>
-              {formatClock(Math.ceil(snapshot.currentItemRemainingMs / 1000))}
+              {isFinished ? '00:00' : formatClock(Math.ceil(snapshot.currentItemRemainingMs / 1000))}
             </ThemedText>
             <ThemedText style={{ color: timerCardTheme.secondaryTextColor }}>
-              Этап {snapshot.currentItemIndex + 1} из {timeline.length}
+              {isFinished
+                ? 'Тренировка завершена'
+                : `Этап ${snapshot.currentItemIndex + 1} из ${timeline.length}`}
             </ThemedText>
           </ThemedView>
 
@@ -255,14 +264,6 @@ export default function WorkoutTimerScreen() {
       )}
     </>
   );
-}
-
-function formatClock(totalSeconds: number) {
-  const safeTotalSeconds = Math.max(0, totalSeconds);
-  const minutes = Math.floor(safeTotalSeconds / 60);
-  const seconds = safeTotalSeconds % 60;
-
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 const styles = StyleSheet.create({
