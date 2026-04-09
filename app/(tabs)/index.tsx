@@ -1,14 +1,14 @@
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { buildTimeline, getTotalDurationSec } from '@/features/workouts/model';
 import { listWorkouts } from '@/lib/db';
 import { formatDuration } from '@/lib/format-duration';
-import { getTotalDurationSec, buildTimeline } from '@/features/workouts/model';
 import type { Workout } from '@/types';
 
 export default function WorkoutsScreen() {
@@ -42,12 +42,12 @@ export default function WorkoutsScreen() {
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
         <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title">Тренировки</ThemedText>
-          <ThemedText>Сохраняйте свои интервальные тренировки и запускайте их отсюда.</ThemedText>
+          <ThemedText type="title">Tabata</ThemedText>
+          <ThemedText>Таймер для интервальных тренировок</ThemedText>
         </ThemedView>
 
         <Pressable style={styles.primaryButton} onPress={() => router.push('/workouts/new')}>
-          <ThemedText style={styles.primaryButtonText}>Создать тренировку</ThemedText>
+          <ThemedText style={styles.primaryButtonText}>Создать</ThemedText>
         </Pressable>
       </ThemedView>
 
@@ -97,7 +97,7 @@ function WorkoutListItem({ workout }: { workout: Workout }) {
         <ThemedText>
           {workout.sets} сетов • {timeline.length} этапов • {formatDuration(totalDurationSec)}
         </ThemedText>
-        <ThemedText style={styles.runHint}>Нажмите, чтобы запустить</ThemedText>
+        <ThemedText style={styles.runHint}>Запустить</ThemedText>
       </Pressable>
 
       <Pressable
