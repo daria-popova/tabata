@@ -24,6 +24,30 @@ const PHASE_LABELS = {
 
 type TimerStatus = 'idle' | 'running' | 'paused' | 'finished';
 
+const TIMER_CARD_THEME = {
+  default: {
+    backgroundColor: '#ffffff',
+    borderColor: 'rgba(127, 127, 127, 0.18)',
+    textColor: '#11181C',
+    secondaryTextColor: '#4b5563',
+    accentColor: '#0a7ea4',
+  },
+  work: {
+    backgroundColor: '#b42318',
+    borderColor: '#b42318',
+    textColor: '#fff8f7',
+    secondaryTextColor: '#ffe2de',
+    accentColor: '#b42318',
+  },
+  rest: {
+    backgroundColor: '#067647',
+    borderColor: '#067647',
+    textColor: '#f4fff8',
+    secondaryTextColor: '#d1fadf',
+    accentColor: '#067647',
+  },
+} as const;
+
 export default function WorkoutTimerScreen() {
   const db = useSQLiteContext();
   const params = useLocalSearchParams<{ id: string }>();
@@ -54,6 +78,12 @@ export default function WorkoutTimerScreen() {
   const timeline = useMemo(() => (workout ? buildTimeline(workout) : []), [workout]);
   const totalDurationSec = getTotalDurationSec(timeline);
   const snapshot = useMemo(() => getTimelineSnapshot(timeline, elapsedMs), [timeline, elapsedMs]);
+  const timerCardTheme =
+    snapshot.currentItem?.type === 'work'
+      ? TIMER_CARD_THEME.work
+      : snapshot.currentItem?.type === 'rest'
+        ? TIMER_CARD_THEME.rest
+        : TIMER_CARD_THEME.default;
 
   useEffect(() => {
     if (status !== 'running' || runStartedAtMs === null) {
@@ -136,14 +166,21 @@ export default function WorkoutTimerScreen() {
             </ThemedText>
           </ThemedView>
 
-          <ThemedView style={styles.timerCard}>
-            <ThemedText type="subtitle">
+          <ThemedView
+            style={[
+              styles.timerCard,
+              {
+                backgroundColor: timerCardTheme.backgroundColor,
+                borderColor: timerCardTheme.borderColor,
+              },
+            ]}>
+            <ThemedText type="subtitle" style={{ color: timerCardTheme.textColor }}>
               {snapshot.currentItem ? PHASE_LABELS[snapshot.currentItem.type] : 'Завершено'}
             </ThemedText>
-            <ThemedText style={styles.timerValue}>
+            <ThemedText style={[styles.timerValue, { color: timerCardTheme.textColor }]}>
               {formatClock(Math.ceil(snapshot.currentItemRemainingMs / 1000))}
             </ThemedText>
-            <ThemedText>
+            <ThemedText style={{ color: timerCardTheme.secondaryTextColor }}>
               Этап {snapshot.currentItemIndex + 1} из {timeline.length}
             </ThemedText>
           </ThemedView>
@@ -151,7 +188,15 @@ export default function WorkoutTimerScreen() {
           <ThemedView style={styles.progressSection}>
             <ThemedText>Общий прогресс</ThemedText>
             <ThemedView style={styles.progressTrack}>
-              <ThemedView style={[styles.progressFill, { width: `${snapshot.progress * 100}%` }]} />
+              <ThemedView
+                style={[
+                  styles.progressFill,
+                  {
+                    width: `${snapshot.progress * 100}%`,
+                    backgroundColor: timerCardTheme.accentColor,
+                  },
+                ]}
+              />
             </ThemedView>
             <ThemedText>
               {formatClock(Math.floor(snapshot.elapsedMs / 1000))} / {formatClock(totalDurationSec)}
@@ -231,7 +276,6 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#0a7ea4',
   },
   controls: {
     flexDirection: 'row',
