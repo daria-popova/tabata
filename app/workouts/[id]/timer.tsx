@@ -11,14 +11,13 @@ import {
   getTotalDurationSec,
 } from '@/features/workouts/model';
 import { useTimerSounds } from '@/features/workouts/use-timer-sounds';
+import { useWorkoutTimer } from '@/features/workouts/use-workout-timer';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { getWorkoutById } from '@/lib/db';
 import { formatClock, formatDuration } from '@/lib/format-duration';
 import { formatRuCount } from '@/lib/russian-plural';
 import { getSoundEnabled } from '@/lib/settings/sound-settings';
 import type { TimelineItem, Workout } from '@/types';
-
-const TICK_MS = 250;
 
 const PHASE_LABELS = {
   warmup: 'Разминка',
@@ -29,8 +28,6 @@ const PHASE_LABELS = {
 
 const SET_FORMS = ['сет', 'сета', 'сетов'] as const;
 const STEP_FORMS = ['этап', 'этапа', 'этапов'] as const;
-
-type TimerStatus = 'idle' | 'running' | 'paused' | 'finished';
 
 const TIMER_CARD_THEME = {
   work: {
@@ -55,11 +52,7 @@ export default function WorkoutTimerScreen() {
   const workoutId = typeof params.id === 'string' ? params.id : '';
   const [isLoading, setIsLoading] = useState(true);
   const [workout, setWorkout] = useState<Awaited<ReturnType<typeof getWorkoutById>>>(null);
-  const [status, setStatus] = useState<TimerStatus>('idle');
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [elapsedBeforeRunMs, setElapsedBeforeRunMs] = useState(0);
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const [runStartedAtMs, setRunStartedAtMs] = useState<number | null>(null);
   const backgroundColor = useThemeColor({}, 'background');
   const surfaceColor = useThemeColor({}, 'surface');
   const borderColor = useThemeColor({}, 'border');
@@ -98,6 +91,11 @@ export default function WorkoutTimerScreen() {
 
   const timeline = useMemo(() => (workout ? buildTimeline(workout) : []), [workout]);
   const totalDurationSec = getTotalDurationSec(timeline);
+  const { elapsedMs, pause, startOrResume, status, stop } = useWorkoutTimer({
+    workoutId,
+    totalDurationMs: totalDurationSec * 1000,
+    isReady: Boolean(workout && timeline.length > 0),
+  });
   const snapshot = useMemo(() => getTimelineSnapshot(timeline, elapsedMs), [timeline, elapsedMs]);
   const isFinished = status === 'finished' || snapshot.isFinished;
   const currentSetLabel = workout
@@ -125,63 +123,20 @@ export default function WorkoutTimerScreen() {
     soundEnabled,
   });
 
-  useEffect(() => {
-    if (status !== 'running' || runStartedAtMs === null) {
-      return;
-    }
-
-    const intervalId = setInterval(() => {
-      const nextElapsedMs = elapsedBeforeRunMs + (Date.now() - runStartedAtMs);
-
-      if (nextElapsedMs >= snapshot.totalDurationMs) {
-        setElapsedMs(snapshot.totalDurationMs);
-        setElapsedBeforeRunMs(snapshot.totalDurationMs);
-        setRunStartedAtMs(null);
-        setStatus('finished');
-        return;
-      }
-
-      setElapsedMs(nextElapsedMs);
-    }, TICK_MS);
-
-    return () => clearInterval(intervalId);
-  }, [elapsedBeforeRunMs, runStartedAtMs, snapshot.totalDurationMs, status]);
-
   function handleStartOrResume() {
     if (timeline.length === 0) {
       return;
     }
 
-    if (status === 'finished') {
-      setElapsedBeforeRunMs(0);
-      setElapsedMs(0);
-    }
-
-    setRunStartedAtMs(Date.now());
-    setStatus('running');
+    startOrResume();
   }
 
   function handlePause() {
-    if (status !== 'running' || runStartedAtMs === null) {
-      return;
-    }
-
-    const nextElapsedMs = Math.min(
-      elapsedBeforeRunMs + (Date.now() - runStartedAtMs),
-      snapshot.totalDurationMs
-    );
-
-    setElapsedBeforeRunMs(nextElapsedMs);
-    setElapsedMs(nextElapsedMs);
-    setRunStartedAtMs(null);
-    setStatus('paused');
+    pause();
   }
 
   function handleStop() {
-    setRunStartedAtMs(null);
-    setElapsedBeforeRunMs(0);
-    setElapsedMs(0);
-    setStatus('idle');
+    stop();
   }
 
   async function handleShare() {
