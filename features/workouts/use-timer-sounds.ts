@@ -27,13 +27,16 @@ export function useTimerSounds({
   const activePlayersRef = useRef<ReturnType<typeof createAudioPlayer>[]>([]);
 
   useEffect(() => {
-    if (Platform.OS !== 'ios') {
+    if (Platform.OS === 'ios') {
+      void setAudioModeAsync({
+        playsInSilentMode: true,
+        shouldPlayInBackground: true,
+      });
       return;
     }
 
     void setAudioModeAsync({
-      playsInSilentMode: true,
-      shouldPlayInBackground: false,
+      shouldPlayInBackground: true,
     });
   }, []);
 
