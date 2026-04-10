@@ -24,14 +24,16 @@ export function buildTimeline(workout: Workout): TimelineItem[] {
     });
     order += 1;
 
-    timeline.push({
-      id: `${workout.id}:rest:${setIndex}`,
-      type: 'rest',
-      durationSec: workout.restSec,
-      order,
-      setNumber: setIndex + 1,
-    });
-    order += 1;
+    if (setIndex < workout.sets - 1) {
+      timeline.push({
+        id: `${workout.id}:rest:${setIndex}`,
+        type: 'rest',
+        durationSec: workout.restSec,
+        order,
+        setNumber: setIndex + 1,
+      });
+      order += 1;
+    }
   }
 
   if (workout.cooldownSec > 0) {

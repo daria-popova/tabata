@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, Share, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -28,6 +29,7 @@ const PHASE_LABELS = {
 
 const SET_FORMS = ['сет', 'сета', 'сетов'] as const;
 const STEP_FORMS = ['этап', 'этапа', 'этапов'] as const;
+const KEEP_AWAKE_TAG = 'workout-timer';
 
 const TIMER_CARD_THEME = {
   work: {
@@ -53,6 +55,7 @@ export default function WorkoutTimerScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [workout, setWorkout] = useState<Awaited<ReturnType<typeof getWorkoutById>>>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const hasAutoStartedRef = useRef(false);
   const backgroundColor = useThemeColor({}, 'background');
   const surfaceColor = useThemeColor({}, 'surface');
   const borderColor = useThemeColor({}, 'border');
@@ -91,7 +94,7 @@ export default function WorkoutTimerScreen() {
 
   const timeline = useMemo(() => (workout ? buildTimeline(workout) : []), [workout]);
   const totalDurationSec = getTotalDurationSec(timeline);
-  const { elapsedMs, pause, startOrResume, status, stop } = useWorkoutTimer({
+  const { elapsedMs, isHydrated, pause, startOrResume, status, stop } = useWorkoutTimer({
     workoutId,
     totalDurationMs: totalDurationSec * 1000,
     isReady: Boolean(workout && timeline.length > 0),
@@ -122,6 +125,31 @@ export default function WorkoutTimerScreen() {
     status,
     soundEnabled,
   });
+
+  useEffect(() => {
+    if (!isHydrated || !workout || timeline.length === 0 || hasAutoStartedRef.current) {
+      return;
+    }
+
+    hasAutoStartedRef.current = true;
+
+    if (status === 'idle') {
+      startOrResume();
+    }
+  }, [isHydrated, startOrResume, status, timeline.length, workout]);
+
+  useEffect(() => {
+    if (status !== 'running') {
+      void deactivateKeepAwake(KEEP_AWAKE_TAG);
+      return;
+    }
+
+    void activateKeepAwakeAsync(KEEP_AWAKE_TAG);
+
+    return () => {
+      void deactivateKeepAwake(KEEP_AWAKE_TAG);
+    };
+  }, [status]);
 
   function handleStartOrResume() {
     if (timeline.length === 0) {
@@ -203,7 +231,7 @@ export default function WorkoutTimerScreen() {
             <ThemedText style={{ color: timerCardTheme.secondaryTextColor }}>
               {isFinished
                 ? 'Тренировка завершена'
-                : `Этап ${snapshot.currentItemIndex + 1} из ${formatRuCount(timeline.length, STEP_FORMS)}`}
+                : ''}
             </ThemedText>
           </ThemedView>
 

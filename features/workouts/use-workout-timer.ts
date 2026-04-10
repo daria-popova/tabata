@@ -30,6 +30,7 @@ export function useWorkoutTimer({ workoutId, totalDurationMs, isReady }: UseWork
   const [elapsedBeforeRunMs, setElapsedBeforeRunMs] = useState(0);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [runStartedAtMs, setRunStartedAtMs] = useState<number | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
   const stateRef = useRef<TimerStateSnapshot>({
     status: 'idle',
     elapsedBeforeRunMs: 0,
@@ -116,6 +117,7 @@ export function useWorkoutTimer({ workoutId, totalDurationMs, isReady }: UseWork
 
   useEffect(() => {
     if (!isReady || !workoutId || totalDurationMs <= 0) {
+      setIsHydrated(false);
       return;
     }
 
@@ -124,7 +126,12 @@ export function useWorkoutTimer({ workoutId, totalDurationMs, isReady }: UseWork
     async function restoreSession() {
       const session = await getActiveTimerSession();
 
-      if (isCancelled || session?.workoutId !== workoutId) {
+      if (isCancelled) {
+        return;
+      }
+
+      if (session?.workoutId !== workoutId) {
+        setIsHydrated(true);
         return;
       }
 
@@ -136,6 +143,7 @@ export function useWorkoutTimer({ workoutId, totalDurationMs, isReady }: UseWork
 
         if (nextElapsedMs >= totalDurationMs) {
           finish();
+          setIsHydrated(true);
           return;
         }
 
@@ -145,6 +153,7 @@ export function useWorkoutTimer({ workoutId, totalDurationMs, isReady }: UseWork
           elapsedMs: nextElapsedMs,
           runStartedAtMs: session.runStartedAtMs,
         });
+        setIsHydrated(true);
         return;
       }
 
@@ -156,6 +165,7 @@ export function useWorkoutTimer({ workoutId, totalDurationMs, isReady }: UseWork
         elapsedMs: nextElapsedMs,
         runStartedAtMs: null,
       });
+      setIsHydrated(true);
     }
 
     void restoreSession();
@@ -247,6 +257,7 @@ export function useWorkoutTimer({ workoutId, totalDurationMs, isReady }: UseWork
 
   return {
     elapsedMs,
+    isHydrated,
     pause,
     startOrResume,
     status,
