@@ -1,3 +1,5 @@
+import {ExerciseIntensity} from "@/types/exercise";
+
 export const PHASE_TYPES = ['warmup', 'work', 'rest', 'cooldown'] as const;
 
 export type PhaseType = (typeof PHASE_TYPES)[number];
@@ -11,6 +13,9 @@ export interface Workout {
   restSec: number;
   sets: number;
   cooldownSec: number;
+  userId: string | null;
+  exerciseKey: string | null;
+  intensity: ExerciseIntensity | null;
 }
 
 export interface TimelineItem {
