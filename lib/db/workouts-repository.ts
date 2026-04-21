@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { Workout } from '@/types';
+import { isExerciseIntensity, Workout} from '@/types';
 
 interface WorkoutRow {
   id: string;
@@ -11,6 +11,9 @@ interface WorkoutRow {
   rest_sec: number;
   sets: number;
   cooldown_sec: number;
+  user_id: string | null;
+  exercise_key: string | null;
+  intensity: string | null;
 }
 
 export async function listWorkouts(db: SQLiteDatabase): Promise<Workout[]> {
@@ -24,7 +27,10 @@ export async function listWorkouts(db: SQLiteDatabase): Promise<Workout[]> {
         work_sec,
         rest_sec,
         sets,
-        cooldown_sec
+        cooldown_sec,
+        user_id,
+        exercise_key,
+        intensity
       FROM workouts
       ORDER BY created_at DESC
     `
@@ -47,7 +53,10 @@ export async function getWorkoutById(
         work_sec,
         rest_sec,
         sets,
-        cooldown_sec
+        cooldown_sec, 
+        user_id,
+        exercise_key,
+        intensity
       FROM workouts
       WHERE id = ?
     `,
@@ -68,16 +77,22 @@ export async function saveWorkout(db: SQLiteDatabase, workout: Workout): Promise
         work_sec,
         rest_sec,
         sets,
-        cooldown_sec
+        cooldown_sec, 
+        user_id,
+        exercise_key,
+        intensity
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
         warmup_sec = excluded.warmup_sec,
         work_sec = excluded.work_sec,
         rest_sec = excluded.rest_sec,
         sets = excluded.sets,
-        cooldown_sec = excluded.cooldown_sec
+        cooldown_sec = excluded.cooldown_sec,
+        user_id = excluded.user_id,
+        exercise_key = excluded.exercise_key,
+        intensity = excluded.intensity
     `,
     workout.id,
     workout.name,
@@ -86,7 +101,10 @@ export async function saveWorkout(db: SQLiteDatabase, workout: Workout): Promise
     workout.workSec,
     workout.restSec,
     workout.sets,
-    workout.cooldownSec
+    workout.cooldownSec,
+    workout.userId,
+    workout.exerciseKey,
+    workout.intensity
   );
 }
 
@@ -104,5 +122,8 @@ function mapWorkoutRow(row: WorkoutRow): Workout {
     restSec: row.rest_sec,
     sets: row.sets,
     cooldownSec: row.cooldown_sec,
+    userId: row.user_id,
+    exerciseKey: row.exercise_key,
+    intensity: row.intensity && isExerciseIntensity(row.intensity) ? row.intensity : null
   };
 }

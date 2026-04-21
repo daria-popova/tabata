@@ -1,4 +1,9 @@
 export type ExerciseIntensity = 'low' | 'medium' | 'high';
+const EXERCISE_INTENSITIES = ["low", "medium", "high"] as const;
+
+export function isExerciseIntensity(value: string): value is ExerciseIntensity {
+    return EXERCISE_INTENSITIES.includes(value as ExerciseIntensity);
+}
 
 export type ExerciseType = 'dynamic' | 'static' | 'cardio';
 
@@ -34,3 +39,4 @@ export interface ExerciseDefinition {
     };
     supportsIntensity: boolean;
 }
+

@@ -29,17 +29,47 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   }
 
   if (currentVersion === 0) {
-    await createWorkoutSchemaV2(db);
+    await createSchemaLatest(db);
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
     return;
   }
 
-  if (currentVersion === 1) {
-    await migrateV1ToV2(db);
+  if (currentVersion < 2) {
+      await migrateV1ToV2(db);
+  }
+
+  if (currentVersion < 3) {
+      await migrateV2ToV3(db);
   }
 
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
 }
+
+async function createSchemaLatest(db: SQLiteDatabase) {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      weight_kg REAL NOT NULL CHECK (weight_kg > 0),
+      created_at INTEGER NOT NULL
+  );
+
+    CREATE TABLE IF NOT EXISTS workouts (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      warmup_sec INTEGER NOT NULL DEFAULT 0 CHECK (warmup_sec >= 0),
+      work_sec INTEGER NOT NULL CHECK (work_sec > 0),
+      rest_sec INTEGER NOT NULL CHECK (rest_sec > 0),
+      sets INTEGER NOT NULL CHECK (sets > 0),
+      cooldown_sec INTEGER NOT NULL DEFAULT 0 CHECK (cooldown_sec >= 0),
+      user_id TEXT REFERENCES users(id),
+      exercise_key TEXT,
+      intensity TEXT
+    );
+  `);
+}
+
 
 async function createWorkoutSchemaV2(db: SQLiteDatabase) {
   await db.execAsync(`
@@ -61,7 +91,7 @@ async function migrateV1ToV2(db: SQLiteDatabase) {
     await tx.execAsync(`
       ALTER TABLE workouts RENAME TO workouts_v1;
 
-      CREATE TABLE workouts (
+      CREATE TABLE IF NOT EXISTS workouts (
         id TEXT PRIMARY KEY NOT NULL,
         name TEXT NOT NULL,
         created_at INTEGER NOT NULL,
@@ -120,6 +150,27 @@ async function migrateV1ToV2(db: SQLiteDatabase) {
       DROP TABLE workouts_v1;
     `);
   });
+}
+
+async function migrateV2ToV3(db: SQLiteDatabase) {
+    await db.withExclusiveTransactionAsync(async (tx) => {
+        await tx.execAsync(`
+            CREATE TABLE IF NOT EXISTS users
+            (
+                id         TEXT PRIMARY KEY NOT NULL,
+                name       TEXT             NOT NULL,
+                weight_kg  REAL             NOT NULL CHECK (weight_kg > 0),
+                created_at INTEGER          NOT NULL
+            );
+
+            ALTER TABLE workouts
+                ADD COLUMN user_id TEXT REFERENCES users(id);
+            ALTER TABLE workouts
+                ADD COLUMN exercise_key TEXT;
+            ALTER TABLE workouts
+                ADD COLUMN intensity TEXT;
+        `);
+    });
 }
 
 function convertLegacyWorkout(workout: LegacyWorkoutRow, phases: LegacyPhaseRow[]) {
