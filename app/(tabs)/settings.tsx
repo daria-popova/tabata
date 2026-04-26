@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import {useFocusEffect, useRouter} from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Switch } from 'react-native';
 
@@ -10,6 +10,7 @@ import { getSoundEnabled, setSoundEnabled } from '@/lib/settings/sound-settings'
 export default function SettingsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [soundEnabled, setSoundEnabledState] = useState(true);
+  const router = useRouter();
   const surfaceColor = useThemeColor({}, 'surface');
   const borderColor = useThemeColor({}, 'border');
 
@@ -44,7 +45,6 @@ export default function SettingsScreen() {
     <ThemedView style={styles.container}>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Настройки</ThemedText>
-        <ThemedText>Управляйте звуковыми сигналами таймера.</ThemedText>
       </ThemedView>
 
       {isLoading ? (
@@ -52,6 +52,7 @@ export default function SettingsScreen() {
           <ActivityIndicator />
         </ThemedView>
       ) : (
+          <ThemedView>
         <Pressable
           style={[styles.settingCard, { borderColor, backgroundColor: surfaceColor }]}
           onPress={() => void handleToggleSound(!soundEnabled)}>
@@ -61,7 +62,16 @@ export default function SettingsScreen() {
           </ThemedView>
           <Switch value={soundEnabled} onValueChange={(value) => void handleToggleSound(value)} />
         </Pressable>
+        <Pressable style={[styles.settingCard, { borderColor, backgroundColor: surfaceColor }]}
+                   onPress={() => router.push('/users')}>
+          <ThemedView style={styles.settingText}>
+            <ThemedText type="subtitle">Пользователи</ThemedText>
+            <ThemedText>Добавляйте и редактируйте пользователей</ThemedText>
+          </ThemedView>
+        </Pressable>
+        </ThemedView>
       )}
+
     </ThemedView>
   );
 }

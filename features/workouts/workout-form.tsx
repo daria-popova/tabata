@@ -12,7 +12,7 @@ import {
   sanitizeNumericText,
 } from '@/lib/number-input';
 import { formatRuCount } from '@/lib/russian-plural';
-import type { Workout } from '@/types';
+import type {User, Workout} from '@/types';
 
 const STEP_FORMS = ['этап', 'этапа', 'этапов'] as const;
 
@@ -23,12 +23,14 @@ export type WorkoutFormState = {
   restSecText: string;
   setsText: string;
   cooldownSecText: string;
+  userId: string|null;
 };
 
 type WorkoutFormProps = {
   initialValue: WorkoutFormState;
   title: string;
   description: string;
+  users: User[];
   submitLabel: string;
   isSubmitting: boolean;
   onSubmit: (workoutInput: WorkoutFormInput) => Promise<void> | void;
@@ -43,6 +45,7 @@ export type WorkoutFormInput = {
   restSec: number;
   sets: number;
   cooldownSec: number;
+  userId: string|null;
 };
 
 export function WorkoutForm({
@@ -50,6 +53,7 @@ export function WorkoutForm({
   title,
   description,
   submitLabel,
+  users,
   isSubmitting,
   onSubmit,
   onDelete,
@@ -69,6 +73,7 @@ export function WorkoutForm({
     const restSec = parsePositiveInteger(form.restSecText);
     const sets = parsePositiveInteger(form.setsText);
     const cooldownSec = parseNonNegativeInteger(form.cooldownSecText);
+    const userId = form.userId;
 
     if (
       normalizedName.length === 0 ||
@@ -85,11 +90,14 @@ export function WorkoutForm({
       id: 'preview',
       name: normalizedName,
       createdAt: 0,
-      warmupSec,
-      workSec,
-      restSec,
-      sets,
-      cooldownSec,
+      warmupSec: warmupSec,
+      workSec: workSec,
+      restSec: restSec,
+      sets: sets,
+      cooldownSec: cooldownSec,
+      userId: userId,
+      exerciseKey: null,
+      intensity: null
     };
   }, [form]);
 
@@ -124,6 +132,11 @@ export function WorkoutForm({
       return;
     }
 
+    if (form.userId === null) {
+      Alert.alert('Выберите пользователя', 'Для тренировки нужно выбрать пользователя.');
+      return;
+    }
+
     await onSubmit({
       name: normalizedName,
       warmupSec,
@@ -131,6 +144,7 @@ export function WorkoutForm({
       restSec,
       sets,
       cooldownSec,
+      userId: form.userId,
     });
   }
 
@@ -155,6 +169,34 @@ export function WorkoutForm({
             placeholderTextColor={mutedTextColor}
             style={[styles.input, { borderColor, backgroundColor: surfaceColor, color: textColor }]}
           />
+        </ThemedView>
+
+        <ThemedView style={styles.section}>
+          <ThemedText type="subtitle">Пользователь</ThemedText>
+          {users.length === 0 ? (<ThemedText>Сначала добавьте пользователя в настройках</ThemedText>):
+              (
+              <ThemedView style={styles.optionsList}>
+                {users.map((user) => {
+                  const isSelected = form.userId === user.id;
+
+                  return (
+                      <Pressable
+                          key={user.id}
+                          onPress={() => updateField('userId', user.id)}
+                          style={[
+                            styles.optionCard,
+                            {
+                              borderColor: isSelected ? '#0a7ea4' : borderColor,
+                              backgroundColor: surfaceColor,
+                            },
+                          ]}>
+                        <ThemedText type="subtitle">{user.name}</ThemedText>
+                        <ThemedText>{user.weightKg} кг</ThemedText>
+                      </Pressable>
+                  );
+                })}
+              </ThemedView>)
+          }
         </ThemedView>
 
         <ThemedView style={styles.section}>
@@ -333,5 +375,14 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     color: '#d64545',
     fontWeight: '600',
+  },
+  optionsList: {
+    gap: 12,
+  },
+  optionCard: {
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
   },
 });

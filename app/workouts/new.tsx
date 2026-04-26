@@ -1,10 +1,14 @@
-import { Stack, useRouter } from 'expo-router';
+import {Stack, useFocusEffect, useRouter} from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useState } from 'react';
-import { Alert } from 'react-native';
+import {useCallback, useState} from 'react';
+import {Alert} from 'react-native';
 
 import { WorkoutForm } from '@/features/workouts/workout-form';
-import { saveWorkout } from '@/lib/db';
+import {saveWorkout} from '@/lib/db';
+import {ExerciseIntensity, User} from "@/types";
+import {listUsers} from "@/lib/db/users-repository";
+import {ThemedView} from "@/components/themed-view";
+import {ThemedText} from "@/components/themed-text";
 
 const INITIAL_FORM_STATE = {
   name: '',
@@ -13,12 +17,33 @@ const INITIAL_FORM_STATE = {
   restSecText: '30',
   setsText: '8',
   cooldownSecText: '0',
+  userId: null,
 };
 
 export default function NewWorkoutScreen() {
-  const db = useSQLiteContext();
-  const router = useRouter();
-  const [isSaving, setIsSaving] = useState(false);
+    const db = useSQLiteContext();
+    const router = useRouter();
+    const [isSaving, setIsSaving] = useState(false);
+    const [users, setUsers] = useState<User[]>([]);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+
+    const loadUsers = useCallback(async () => {
+        try {
+            setErrorMessage(null);
+            const nextUsers = await listUsers(db);
+            setUsers(nextUsers);
+        } catch (error) {
+            console.error('Failed to load users', error);
+            setErrorMessage('Не удалось загрузить пользователей.');
+        } finally {
+            setIsLoadingUsers(false);
+        }
+    }, [db])
+
+    useFocusEffect(useCallback(() => {
+        void loadUsers();
+    }, [loadUsers]));
 
   async function handleCreate(workoutInput: {
     name: string;
@@ -27,6 +52,7 @@ export default function NewWorkoutScreen() {
     restSec: number;
     sets: number;
     cooldownSec: number;
+    userId: string | null;
   }) {
     setIsSaving(true);
 
@@ -35,6 +61,8 @@ export default function NewWorkoutScreen() {
         id: createId('workout'),
         createdAt: Date.now(),
         ...workoutInput,
+        exerciseKey:null,
+        intensity:null
       });
 
       router.back();
@@ -48,16 +76,34 @@ export default function NewWorkoutScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Новая тренировка' }} />
+        <Stack.Screen options={{title: 'Новая тренировка'}}/>
 
-      <WorkoutForm
-        initialValue={INITIAL_FORM_STATE}
-        title="Новая тренировка"
-        description="Укажите разминку, рабочий цикл и заминку."
-        submitLabel="Сохранить тренировку"
-        isSubmitting={isSaving}
-        onSubmit={handleCreate}
-      />
+        {errorMessage ? (
+                <ThemedView>
+                    <ThemedText type="subtitle">Ошибка</ThemedText>
+                    <ThemedText>{errorMessage}</ThemedText>
+                </ThemedView>
+            ) : isLoadingUsers ? (
+                <ThemedView><ThemedText>Загрузка пользователей...</ThemedText></ThemedView>
+            ) : users.length === 0?(
+                <ThemedView>
+                    <ThemedText type="subtitle">Нет доступных пользователей</ThemedText>
+                    <ThemedText>Добавьте их в настройках</ThemedText>
+                </ThemedView>
+            ):
+            (
+                <WorkoutForm
+                    initialValue={INITIAL_FORM_STATE}
+                    title="Новая тренировка"
+                    users={users}
+                    description="Укажите разминку, рабочий цикл и заминку."
+                    submitLabel="Сохранить тренировку"
+                    isSubmitting={isSaving}
+                    onSubmit={handleCreate}
+                />
+            )}
+
+
     </>
   );
 }

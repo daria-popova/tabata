@@ -1,12 +1,14 @@
 import { Pressable, Alert, StyleSheet } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import {Stack, useFocusEffect, useLocalSearchParams, useRouter} from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useMemo, useState } from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WorkoutForm } from '@/features/workouts/workout-form';
 import { deleteWorkout, getWorkoutById, saveWorkout } from '@/lib/db';
+import {User} from "@/types";
+import {listUsers} from "@/lib/db/users-repository";
 
 export default function EditWorkoutScreen() {
   const db = useSQLiteContext();
@@ -17,6 +19,24 @@ export default function EditWorkoutScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [workout, setWorkout] = useState<Awaited<ReturnType<typeof getWorkoutById>>>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      setErrorMessage(null);
+      const nextUsers = await listUsers(db);
+      setUsers(nextUsers);
+    } catch (error) {
+      console.error('Failed to load workouts', error);
+      setErrorMessage('Не удалось загрузить пользователей.');
+    }
+  }, [db])
+
+  useFocusEffect(useCallback(() => {
+    void loadUsers();
+  }, [loadUsers]));
+
 
   useEffect(() => {
     async function loadWorkout() {
@@ -46,6 +66,7 @@ export default function EditWorkoutScreen() {
       restSecText: String(workout.restSec),
       setsText: String(workout.sets),
       cooldownSecText: String(workout.cooldownSec),
+      userId: workout.userId,
     };
   }, [workout]);
 
@@ -56,6 +77,7 @@ export default function EditWorkoutScreen() {
     restSec: number;
     sets: number;
     cooldownSec: number;
+    userId: string | null;
   }) {
     if (!workout) {
       return;
@@ -141,6 +163,7 @@ export default function EditWorkoutScreen() {
           initialValue={initialValue}
           title="Редактировать тренировку"
           description=""
+          users={users}
           submitLabel="Сохранить изменения"
           isSubmitting={isSaving}
           onSubmit={handleSave}
