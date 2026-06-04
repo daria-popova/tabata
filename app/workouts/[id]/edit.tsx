@@ -5,9 +5,9 @@ import {useCallback, useEffect, useMemo, useState} from 'react';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WorkoutForm } from '@/features/workouts/workout-form';
+import { WorkoutForm, WorkoutFormInput } from '@/features/workouts/workout-form';
 import { deleteWorkout, getWorkoutById, saveWorkout } from '@/lib/db';
-import {User} from "@/types";
+import { User} from "@/types";
 import {listUsers} from "@/lib/db/users-repository";
 
 export default function EditWorkoutScreen() {
@@ -70,18 +70,12 @@ export default function EditWorkoutScreen() {
       setsText: String(workout.sets),
       cooldownSecText: String(workout.cooldownSec),
       userId: workout.userId,
+      exerciseKey: workout.exerciseKey,
+      intensity: workout.intensity
     };
   }, [workout]);
 
-  async function handleSave(workoutInput: {
-    name: string;
-    warmupSec: number;
-    workSec: number;
-    restSec: number;
-    sets: number;
-    cooldownSec: number;
-    userId: string | null;
-  }) {
+  async function handleSave(workoutInput: WorkoutFormInput) {
     if (!workout) {
       return;
     }

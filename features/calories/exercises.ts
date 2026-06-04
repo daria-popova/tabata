@@ -23,7 +23,8 @@ export const EXERCISES: ExerciseDefinition[] = [
     }
 ];
 
-export function getExerciseByKey(key:string){
+export function getExerciseByKey(key:string|null){
+    if(!key) return null;
     return EXERCISES.find(exercise => exercise.key === key);
 }
 // function exerciseSupportsIntensity(exercise: ExerciseDefinition) {

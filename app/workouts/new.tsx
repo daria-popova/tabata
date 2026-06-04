@@ -3,9 +3,9 @@ import { useSQLiteContext } from 'expo-sqlite';
 import {useCallback, useState} from 'react';
 import {Alert, StyleSheet} from 'react-native';
 
-import { WorkoutForm } from '@/features/workouts/workout-form';
+import { WorkoutForm, WorkoutFormInput } from '@/features/workouts/workout-form';
 import {saveWorkout} from '@/lib/db';
-import { User} from "@/types";
+import {User} from "@/types";
 import {listUsers} from "@/lib/db/users-repository";
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
@@ -18,6 +18,8 @@ const INITIAL_FORM_STATE = {
   setsText: '8',
   cooldownSecText: '0',
   userId: null,
+  exerciseKey: null,
+  intensity: null,
 };
 
 export default function NewWorkoutScreen() {
@@ -45,24 +47,14 @@ export default function NewWorkoutScreen() {
         void loadUsers();
     }, [loadUsers]));
 
-  async function handleCreate(workoutInput: {
-    name: string;
-    warmupSec: number;
-    workSec: number;
-    restSec: number;
-    sets: number;
-    cooldownSec: number;
-    userId: string | null;
-  }) {
+  async function handleCreate(workoutInput: WorkoutFormInput) {
     setIsSaving(true);
 
     try {
       await saveWorkout(db, {
         id: createId('workout'),
         createdAt: Date.now(),
-        ...workoutInput,
-        exerciseKey:null,
-        intensity:null
+        ...workoutInput
       });
 
       router.back();
