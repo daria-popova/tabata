@@ -16,6 +16,7 @@ export default function EditWorkoutScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const workoutId = typeof params.id === 'string' ? params.id : '';
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [workout, setWorkout] = useState<Awaited<ReturnType<typeof getWorkoutById>>>(null);
@@ -30,6 +31,8 @@ export default function EditWorkoutScreen() {
     } catch (error) {
       console.error('Failed to load workouts', error);
       setErrorMessage('Не удалось загрузить пользователей.');
+    } finally {
+      setIsLoadingUsers(false);
     }
   }, [db])
 
@@ -153,7 +156,9 @@ export default function EditWorkoutScreen() {
         <ThemedView style={styles.centerState}>
           <ThemedText>Загружаю тренировку...</ThemedText>
         </ThemedView>
-      ) : !initialValue ? (
+      )  : isLoadingUsers ? (
+          <ThemedView><ThemedText>Загрузка пользователей...</ThemedText></ThemedView>
+      ): !initialValue ? (
         <ThemedView style={styles.centerState}>
           <ThemedText type="subtitle">Тренировка не найдена</ThemedText>
           <ThemedText>Возможно, она уже была удалена.</ThemedText>

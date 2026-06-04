@@ -1,11 +1,11 @@
 import {Stack, useFocusEffect, useRouter} from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import {useCallback, useState} from 'react';
-import {Alert} from 'react-native';
+import {Alert, StyleSheet} from 'react-native';
 
 import { WorkoutForm } from '@/features/workouts/workout-form';
 import {saveWorkout} from '@/lib/db';
-import {ExerciseIntensity, User} from "@/types";
+import { User} from "@/types";
 import {listUsers} from "@/lib/db/users-repository";
 import {ThemedView} from "@/components/themed-view";
 import {ThemedText} from "@/components/themed-text";
@@ -79,14 +79,14 @@ export default function NewWorkoutScreen() {
         <Stack.Screen options={{title: 'Новая тренировка'}}/>
 
         {errorMessage ? (
-                <ThemedView>
+                <ThemedView style={styles.centerState}>
                     <ThemedText type="subtitle">Ошибка</ThemedText>
                     <ThemedText>{errorMessage}</ThemedText>
                 </ThemedView>
             ) : isLoadingUsers ? (
-                <ThemedView><ThemedText>Загрузка пользователей...</ThemedText></ThemedView>
+                <ThemedView style={styles.centerState}><ThemedText>Загрузка пользователей...</ThemedText></ThemedView>
             ) : users.length === 0?(
-                <ThemedView>
+                <ThemedView style={styles.centerState}>
                     <ThemedText type="subtitle">Нет доступных пользователей</ThemedText>
                     <ThemedText>Добавьте их в настройках</ThemedText>
                 </ThemedView>
@@ -111,3 +111,12 @@ export default function NewWorkoutScreen() {
 function createId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
+const styles = StyleSheet.create({
+    centerState: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+        padding: 24,
+    },
+});

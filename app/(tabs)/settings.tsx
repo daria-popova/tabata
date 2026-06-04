@@ -52,7 +52,7 @@ export default function SettingsScreen() {
           <ActivityIndicator />
         </ThemedView>
       ) : (
-          <ThemedView>
+          <ThemedView style={styles.settingList}>
         <Pressable
           style={[styles.settingCard, { borderColor, backgroundColor: surfaceColor }]}
           onPress={() => void handleToggleSound(!soundEnabled)}>
@@ -104,4 +104,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  settingList: {
+    gap: 12
+  }
 });

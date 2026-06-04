@@ -90,12 +90,13 @@
     const router = useRouter();
     return (
       <ThemedView style={[styles.card, { backgroundColor: surfaceMutedColor }]}>
+        <ThemedView style={styles.cardContent}>
           <ThemedText type="subtitle">{user.name}</ThemedText>
           <ThemedText>{user.weightKg} кг</ThemedText>
+        </ThemedView>
         <Pressable
             style={[styles.editButton, { backgroundColor: surfaceColor }]}
-            //onPress={() => router.push(`/users/${user.id}/edit`)}>
-            onPress={() => router.push(`/settings`)}>
+            onPress={() => router.push(`/users/${user.id}/edit`)}>
           <IconSymbol name="square.and.pencil" size={20} color="#0a7ea4" />
         </Pressable>
       </ThemedView>
@@ -135,9 +136,14 @@
     card: {
       padding: 16,
       borderRadius: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between'
     },
     cardContent: {
       gap: 6,
+      flex: 1,
+      backgroundColor: 'transparent'
     },
     primaryButton: {
       alignSelf: 'flex-start',
