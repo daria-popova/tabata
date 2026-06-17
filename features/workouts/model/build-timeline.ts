@@ -121,3 +121,18 @@ export function getTimelineSnapshot(timeline: TimelineItem[], elapsedMs: number)
     isFinished: true,
   };
 }
+
+export function getElapsedWorkSec(timeline: TimelineItem[], currentItemIndex: number, currentItemElapsedMs: number): number {
+  let total = 0;
+  for (let i = 0; i <= currentItemIndex; i++) {
+    if (timeline[i].type !== "work") continue;
+
+    if (i < currentItemIndex) {
+      total += timeline[i].durationSec;
+    } else {
+      total += currentItemElapsedMs / 1000;//текущая фаза work
+    }
+  }
+
+  return total
+}

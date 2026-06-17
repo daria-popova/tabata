@@ -6,7 +6,7 @@ function getWorkoutActiveDuration(workout: Workout) {
 }
 
 function resolveWorkoutMet(workout: Workout) {
-    if (!workout.exerciseKey || !workout.intensity) {
+    if (!workout.exerciseKey) {
         return null;
     }
     let exercise = getExerciseByKey(workout.exerciseKey);
@@ -16,21 +16,23 @@ function resolveWorkoutMet(workout: Workout) {
     if (exercise.type === "static") {
         return exercise.met.fixed ?? null;
     }
-    return exercise.met[workout.intensity] ?? null;
+    return workout.intensity ? exercise.met[workout.intensity] : null;
 }
 
 export function calculateWorkoutCalories(workout: Workout, user: User | null) {
-    //`MET * weightKg * durationHours`
-    if (!user) {
-        return null;
-    }
-    let met = resolveWorkoutMet(workout) ?? 0;
-    let durationHours = getWorkoutActiveDuration(workout) / 3600;
-    return met * user.weightKg * durationHours;
+    return calculateWorkoutCaloriesForSec(workout, user, getWorkoutActiveDuration(workout))
 }
 
 export function formatCalories(calories: number) {
-    return `~${Math.round(calories)} ккал`;
+    return calories > 0 ? `${Math.round(calories)} ккал` : '';
 }
 
-//todo считать количество калорий тренировки в процессе
+export function calculateWorkoutCaloriesForSec(workout: Workout, user: User | null, sec: number): number {
+    //`MET * weightKg * durationHours`
+    if (!user) {
+        return 0;
+    }
+    let met = resolveWorkoutMet(workout) ?? 0;
+    let durationHours = sec / 3600;
+    return met * user.weightKg * durationHours;
+}

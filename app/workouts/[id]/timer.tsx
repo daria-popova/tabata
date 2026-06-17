@@ -7,7 +7,7 @@ import { Alert, Pressable, Share, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
-  buildTimeline,
+  buildTimeline, getElapsedWorkSec,
   getTimelineSnapshot,
   getTotalDurationSec,
 } from '@/features/workouts/model';
@@ -19,6 +19,8 @@ import { formatClock, formatDuration } from '@/lib/format-duration';
 import { formatRuCount } from '@/lib/russian-plural';
 import { getSoundEnabled } from '@/lib/settings/sound-settings';
 import type { TimelineItem, Workout } from '@/types';
+import {getUserById} from "@/lib/db/users-repository";
+import {calculateWorkoutCalories, calculateWorkoutCaloriesForSec, formatCalories} from "@/features/calories/calculate-workout-exercise";
 
 const PHASE_LABELS = {
   warmup: 'Разминка',
@@ -54,6 +56,7 @@ export default function WorkoutTimerScreen() {
   const workoutId = typeof params.id === 'string' ? params.id : '';
   const [isLoading, setIsLoading] = useState(true);
   const [workout, setWorkout] = useState<Awaited<ReturnType<typeof getWorkoutById>>>(null);
+  const [user, setUser] = useState<Awaited<ReturnType<typeof getUserById>>>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const hasAutoStartedRef = useRef(false);
   const backgroundColor = useThemeColor({}, 'background');
@@ -80,7 +83,9 @@ export default function WorkoutTimerScreen() {
     async function loadWorkout() {
       try {
         const loadedWorkout = await getWorkoutById(db, workoutId);
+        const userLoaded = loadedWorkout?.userId ? await getUserById(db, loadedWorkout?.userId) : null;
         setWorkout(loadedWorkout);
+        setUser(userLoaded);
       } catch (error) {
         console.error('Failed to load workout for timer', error);
         Alert.alert('Ошибка загрузки', 'Не удалось загрузить тренировку.');
@@ -93,6 +98,8 @@ export default function WorkoutTimerScreen() {
   }, [db, workoutId]);
 
   const timeline = useMemo(() => (workout ? buildTimeline(workout) : []), [workout]);
+  const totalCalories = useMemo(() => ((workout && user) ? calculateWorkoutCalories(workout, user) : 0), [workout, user]);
+
   const totalDurationSec = getTotalDurationSec(timeline);
   const { elapsedMs, isHydrated, pause, startOrResume, status, stop } = useWorkoutTimer({
     workoutId,
@@ -100,6 +107,13 @@ export default function WorkoutTimerScreen() {
     isReady: Boolean(workout && timeline.length > 0),
   });
   const snapshot = useMemo(() => getTimelineSnapshot(timeline, elapsedMs), [timeline, elapsedMs]);
+  const workElapsedSec = useMemo(() => getElapsedWorkSec(
+      timeline,
+      snapshot.currentItemIndex,
+      snapshot.currentItemElapsedMs
+  ), [timeline,snapshot]);
+  const calories = workout ? calculateWorkoutCaloriesForSec(workout, user, workElapsedSec) : null;
+
   const isFinished = status === 'finished' || snapshot.isFinished;
   const currentSetLabel = workout
     ? getCurrentSetLabel(workout, snapshot.currentItem, isFinished)
@@ -174,7 +188,7 @@ export default function WorkoutTimerScreen() {
 
     try {
       await Share.share({
-        message: buildShareMessage(workout, totalDurationSec),
+        message: buildShareMessage(workout, totalDurationSec, totalCalories),
       });
     } catch (error) {
       console.error('Failed to share workout result', error);
@@ -202,6 +216,7 @@ export default function WorkoutTimerScreen() {
             <ThemedText>
               {formatRuCount(workout.sets, SET_FORMS)} • {formatRuCount(timeline.length, STEP_FORMS)}{' '}
               • {formatDuration(totalDurationSec)}
+              {totalCalories ? ' • ' + formatCalories(totalCalories) : null}
             </ThemedText>
           </ThemedView>
 
@@ -228,6 +243,10 @@ export default function WorkoutTimerScreen() {
                 {currentSetLabel}
               </ThemedText>
             ) : null}
+            {calories ? (<ThemedText style={[styles.calories, {color: timerCardTheme.textColor}]}>
+              🔥 {formatCalories(calories)}
+            </ThemedText>) : null}
+
             <ThemedText style={{ color: timerCardTheme.secondaryTextColor }}>
               {isFinished
                 ? 'Тренировка завершена'
@@ -299,11 +318,12 @@ function getCurrentSetLabel(
   return `Сет ${currentSetNumber} из ${workout.sets}`;
 }
 
-function buildShareMessage(workout: Workout, totalDurationSec: number): string {
-  return `#спорт Тренировка ${workout.name} за ${formatDuration(totalDurationSec)}, ${formatRuCount(
-    workout.sets,
-    SET_FORMS
-  )} (работа ${formatDuration(workout.workSec)}, отдых ${formatDuration(workout.restSec)}).`;
+function buildShareMessage(workout: Workout, totalDurationSec: number, totalCalories: number): string {
+  let report = `#спорт Тренировка ${workout.name} за ${formatDuration(totalDurationSec)}.`;
+  if (totalCalories) {
+    report += ` Cожжено ${formatCalories(totalCalories)}.`;
+  }
+  return report;
 }
 
 const styles = StyleSheet.create({
@@ -338,6 +358,12 @@ const styles = StyleSheet.create({
     fontSize: 26,
     lineHeight: 32,
     fontWeight: '700',
+  },
+  calories: {
+    fontSize: 28,
+    lineHeight: 32,
+    fontWeight: '900',
+    color: "#a6a3a3"
   },
   progressSection: {
     gap: 10,
