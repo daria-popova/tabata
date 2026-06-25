@@ -6,12 +6,14 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { calculateWorkoutCalories, formatCalories } from '@/features/calories/calculate-workout-exercise';
 import { buildTimeline, getTotalDurationSec } from '@/features/workouts/model';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { listWorkouts } from '@/lib/db';
+import { listUsers } from '@/lib/db/users-repository';
 import { formatDuration } from '@/lib/format-duration';
 import { formatRuCount } from '@/lib/russian-plural';
-import type { Workout } from '@/types';
+import type { User, Workout } from '@/types';
 
 const SET_FORMS = ['сет', 'сета', 'сетов'] as const;
 const STEP_FORMS = ['этап', 'этапа', 'этапов'] as const;
@@ -21,14 +23,16 @@ export default function WorkoutsScreen() {
   const router = useRouter();
   const surfaceMutedColor = useThemeColor({}, 'surfaceMuted');
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [usersById, setUsersById] = useState<Record<string, User>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loadWorkouts = useCallback(async () => {
     try {
       setErrorMessage(null);
-      const nextWorkouts = await listWorkouts(db);
+      const [nextWorkouts, users] = await Promise.all([listWorkouts(db), listUsers(db)]);
       setWorkouts(nextWorkouts);
+      setUsersById(Object.fromEntries(users.map((u) => [u.id, u])));
     } catch (error) {
       console.error('Failed to load workouts', error);
       setErrorMessage('Не удалось загрузить тренировки.');
@@ -82,19 +86,21 @@ export default function WorkoutsScreen() {
           data={workouts}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => <WorkoutListItem workout={item} />}
+          renderItem={({ item }) => <WorkoutListItem workout={item} usersById={usersById} />}
         />
       )}
     </ThemedView>
   );
 }
 
-function WorkoutListItem({ workout }: { workout: Workout }) {
+function WorkoutListItem({ workout, usersById }: { workout: Workout; usersById: Record<string, User> }) {
   const router = useRouter();
   const surfaceMutedColor = useThemeColor({}, 'surfaceMuted');
   const surfaceColor = useThemeColor({}, 'surface');
   const timeline = buildTimeline(workout);
   const totalDurationSec = getTotalDurationSec(timeline);
+  const user = workout.userId ? (usersById[workout.userId] ?? null) : null;
+  const caloriesText = formatCalories(calculateWorkoutCalories(workout, user));
 
   return (
     <ThemedView style={[styles.card, { backgroundColor: surfaceMutedColor }]}>
@@ -105,6 +111,7 @@ function WorkoutListItem({ workout }: { workout: Workout }) {
         <ThemedText>
           {formatRuCount(workout.sets, SET_FORMS)} • {formatRuCount(timeline.length, STEP_FORMS)}{' '}
           • {formatDuration(totalDurationSec)}
+          {caloriesText ? ` • ~${caloriesText}` : ''}
         </ThemedText>
         <ThemedText style={styles.runHint}>Запустить</ThemedText>
       </Pressable>
