@@ -21,6 +21,8 @@ const MAPPING = {
   'square.and.pencil': 'edit',
   timer: 'timer',
   'gearshape.fill': 'settings',
+  'flame.fill': 'whatshot',
+  tablecells: 'grid-on',
 } as IconMapping;
 
 /**

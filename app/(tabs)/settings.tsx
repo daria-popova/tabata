@@ -69,6 +69,13 @@ export default function SettingsScreen() {
             <ThemedText>Добавляйте и редактируйте пользователей</ThemedText>
           </ThemedView>
         </Pressable>
+        <Pressable style={[styles.settingCard, { borderColor, backgroundColor: surfaceColor }]}
+                   onPress={() => router.push('/met-table')}>
+          <ThemedView style={styles.settingText}>
+            <ThemedText type="subtitle">Справочник MET</ThemedText>
+            <ThemedText>Коэффициенты нагрузки для всех упражнений</ThemedText>
+          </ThemedView>
+        </Pressable>
         </ThemedView>
       )}
 
